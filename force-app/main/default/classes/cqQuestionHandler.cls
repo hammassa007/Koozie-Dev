@@ -1,11 +1,13 @@
-public with sharing class cqQuestionHandler {
+public without sharing class cqQuestionHandler {
 
     @InvocableMethod(label='Generic Clarification Module' description='Handles When Question created and closed.' category='Clarification_Question__c')
-    public static void handleQuestions(List<string> CaseID){    
+    public static void handleQuestions(List<string> CaseID){ 
+        System.debug('====Entered invocable===');
         handleClosed(CaseID);    
     }    
 
     public static void handleClosed(List<string> CaseID){
+        System.debug('====Entered handleClosed===');
         Map<Case, List<Clarification_Question__c>> uCaseID = new Map<Case, List<Clarification_Question__c>>();
         Map<Case, List<Clarification_Question__c>> messageCase = new Map<Case, List<Clarification_Question__c>>();
         

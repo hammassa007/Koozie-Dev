@@ -13,9 +13,11 @@ public with sharing class cqParseClarMessage {
             integer proofNum = 0;      
 
             For(Clarification_Question__c clarQuest : mpCaseDetails.get(lstCase)){
-            
+            System.debug('====== Enter int  for loop=======');
                 IF(clarQuest.Question_Type__c == 'Clarification'){
-                    clarText += string.valueOf(clarNum + 1) + ')  ' + clarQuest.Message_Text__c + '\n';
+                    System.debug('====Enter into IF======');
+                    clarText += string.valueOf(clarNum + 1) + '  ' + clarQuest.Message_Text__c + '\n';
+                    System.debug('====Enter into Clartext====== ' +clarText);
                     clarNum +=1;
                 }
                 

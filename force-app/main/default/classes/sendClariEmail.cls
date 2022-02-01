@@ -2,34 +2,46 @@
 public without sharing class sendClariEmail{
 
     public static void sendEmail(List<String> caseRecordString, String emailType){
-    
+        system.debug('sendemail method @@@@@@');
+        String setCustomerToEmail;
         String host = URL.getSalesforceBaseUrl().getHost();
         String server = host.substring(0,host.indexOf('.'));
         String sentEmail = 'customerService@KoozieGroup.com';
         List<OrgWideEmailAddress> defOWE = new List<OrgWideEmailAddress>();
-        
+        List<Case> lstCase = [SELECT id, Customer_To_Email__c FROM Case WHERE Customer_To_Email__c != NULL];
+        if(lstCase.size() > 0) {
+            setCustomerToEmail = lstCase[0].Customer_To_Email__c;
+        }
         //Get Org Wide Email List for parsing
         List<OrgWideEmailAddress> allOWE = 
             [SELECT Id, Address, DisplayName 
-            FROM OrgWideEmailAddress];
+            FROM OrgWideEmailAddress ];
         Map<String, OrgWideEmailAddress> mpOWEToEmail = new Map<String, OrgWideEmailAddress>();
         
         //Loop and add to OWE Map
+       // system.debug(mpOWEToEmail+'@@@servicecld');
+        system.debug(allOWE+'@@@servicecld OWE');
+        
         For(OrgWideEmailAddress owe : allOWE){
                 mpOWEToEmail.put(owe.Address, owe);
         }
-        
-        if(server.contains('--')){                
-            defOWE.add(mpOWEToEmail.get('servicecloudexceptions@outlook.com')); 
-            sentEmail = 'servicecloudexceptions@outlook.com';         
+        system.debug(mpOWEToEmail+'@@@servicecld MpOWE');
+        system.debug('====server====== ' +server);
+        if(server.contains('--')){  
+            system.debug('inside if @@@@@@@@@@@@@@@'+mpOWEToEmail.get('servicecloudexceptions@outlook.com'));
+            //defOWE.add(mpOWEToEmail.get('servicecloudexceptions@outlook.com'));
+            defOWE.add(mpOWEToEmail.get('customerservice@kooziegroup.com')); 
+            //sentEmail = 'servicecloudexception@outlook.com';     
+            sentEmail = 'customerservice@kooziegroup.com';     
       
         } else {
+            system.debug('inside if @@@@@@@@@@@@@@@'+mpOWEToEmail.get('customerservice@kooziegroup.com'));
             defOWE.add(mpOWEToEmail.get('customerservice@kooziegroup.com')); 
             sentEmail = 'customerservice@kooziegroup.com';                    
         }           
         
         
-        system.debug(mpOWEToEmail.get('customerservice@kooziegroup.com'));
+       // system.debug(mpOWEToEmail.get('customerservice@kooziegroup.com'));
 
         
         //Remove duplicates from caseRecordString 
@@ -45,17 +57,24 @@ public without sharing class sendClariEmail{
             caseRecordString.clear();
             caseRecordString.addAll(setRec);
         }
-        
-        ID defaultEmailID = defOWE[0].ID;
-        ID defaultEmailID_CCC = defOWE[0].ID;
-        ID defaultEmailID_AW = defOWE[0].ID;
-        ID defaultEmailID_4i = defOWE[0].ID;
+        system.debug('@@defaultemailPrerak'+defOWE);
+        String defaultEmailID = defOWE[0].Address;
+        system.debug('======= '+defaultEmailID);
+        //ID defaultEmailID = '0D23p000000k9q3';
+        String defaultEmailID_CCC = defOWE[0].Address; 
+        system.debug('======= '+defaultEmailID_CCC);
+        String defaultEmailID_AW = defOWE[0].Address;
+        system.debug('======= '+defaultEmailID_AW);
+        String defaultEmailID_4i = defOWE[0].Address;
+        system.debug('======= '+defaultEmailID_4i);
         List<String> lstContEmail = new List<String>();
         List<Clarification_Question__c> cqUpdate = new List<Clarification_Question__c>();
 
         //Get clarification record type
-        RecordType rtClar = new RecordType();
-        rtClar = [Select ID From RecordType Where sObjectType ='Contact' and Name = 'Clarification Contact'];
+       /*  RecordType rtClar = new RecordType();
+        rtClar = [Select ID From RecordType Where sObjectType ='Contact' and Name = 'Clarification Contact']; */
+        Id rtClar =Schema.SObjectType.Contact.getRecordTypeInfosByName().get('Clarification Contact').getRecordTypeId();
+
 
         //Variables for mapping cases and creating contacts 
         List<Apex_Errors__c> aeInsert = new List<Apex_Errors__c>();
@@ -83,15 +102,18 @@ public without sharing class sendClariEmail{
         For(Case c : mpCases.values()){
             if(c.Proof_To_Email__c != null){
                 contactEmail.add(c.Proof_To_Email__c);
+                System.debug('===Entered into IF==== '+contactEmail);
             }
 
             if(c.Clarification_To_Email__c != null){
                 contactEmail.add(c.Clarification_To_Email__c);
+                System.debug('===Entered into IF==== '+contactEmail);
             }    
         }
 
         if(contactEmail.size() > 0){
-            contLst = [Select Id, Email From Contact Where email =: contactEmail];
+            System.debug('===Entered into IF====');
+            contLst = [Select Id, Email From Contact Where email =: contactEmail LIMIT 1];
 
             if(contLst.size()>0){
                 For(Contact con : contLst){
@@ -113,7 +135,7 @@ public without sharing class sendClariEmail{
                 newCont.LastName = (emailType == 'Clarification') ? mpCases.get(caseID).Clarification_To_Email__c : mpCases.get(caseID).Proof_To_Email__c;
                 newCont.Email =    (emailType == 'Clarification') ? mpCases.get(caseID).Clarification_To_Email__c : mpCases.get(caseID).Proof_To_Email__c;
                 newCont.AccountId = (mpCases.get(caseID).AccountID != null) ? mpCases.get(caseID).AccountID : null;
-                newCont.RecordTypeId = (rtClar == null) ? null : rtClar.ID;
+                newCont.RecordTypeId = (rtClar == null) ? null : rtClar;
                 newCont.Responsibility_Type__c = 'CLARIFICATIONS';
                 createContact.add(newCont);       
             }    
@@ -123,13 +145,14 @@ public without sharing class sendClariEmail{
         For(Case emailCase : mpCases.values()){
             
             if(emailCase.Clarification_To_Email__c != null) lstContEmail.add(emailCase.Clarification_To_Email__c);
+            System.debug('========Clar to Email==== '+lstContEmail);
             if(emailCase.Proof_To_Email__c != null) lstContEmail.add(emailCase.Proof_To_Email__c);
         }
 
         //Query for contact and add to contact map
         if(lstContEmail.size() > 0){
             List<Contact> lstCurrentContact = new List<Contact>([Select ID, Email From Contact Where email=: lstContEmail]);
-
+            System.debug('========Contact==== '+lstCurrentContact);
             if(lstCurrentContact.size() > 0){
                 For(Contact con : lstCurrentContact){
                     mpCont.put(con.Email, con);
@@ -138,13 +161,23 @@ public without sharing class sendClariEmail{
         }
         
         //Create list of clarification questions
-        List<Clarification_Question__c> lstCaseQues = new List<Clarification_Question__c>(
+        /* List<Clarification_Question__c> lstCaseQues = new List<Clarification_Question__c>(
                 [Select ID, Case__c, Question_Type__c
                 From Clarification_Question__c 
                 where Case__c =: caseRecordString
                 and Status__c != 'Closed' and Status__c != 'EBS Closed' 
-                and Question_Type__c =: emailType]);
+                and Question_Type__c =: emailType]); */
+
+        List<Clarification_Question__c> lstCaseQues = new List<Clarification_Question__c>(
+                [Select ID, Case__c, Question_Type__c,RecordType.Name
+                From Clarification_Question__c 
+                where Case__c =: caseRecordString 
+                AND Status__c != 'Closed' AND Status__c != 'EBS Closed' AND(RecordType.Name = 'ClarificationQuestion' OR RecordType.Name = 'ProofQuestion' OR RecordType.Name = 'NotificationQuestion')]);
+                //System.debug('===== '+ emailType);
+                //System.debug('===== '+ lstCaseQues[0].Question_Type__c);
+                //System.debug('===== '+caseRecordString);
         
+        system.debug('lstCaseQues size@@@@'+lstCaseQues.size());
         //Make sure there are open questions before proceeding 
         if(lstCaseQues.size() > 0)
         {
@@ -153,6 +186,7 @@ public without sharing class sendClariEmail{
                 lstClariQues.add(cQues);
                 String mpID = string.valueOf(cQues.Question_Type__c) + cQues.Question_Type__c;
                 mpQuestions.put(mpID, lstClariQues);
+                System.debug('====xyxy===== '+mpID);
 
                 //Need to close notification once email sent
                 if(cQues.Question_Type__c == 'Notification'){
@@ -187,7 +221,7 @@ public without sharing class sendClariEmail{
             
             Messaging.Email[] arrayMessage = new Messaging.Email[0];
             
-            Try{
+         //   Try{
 
                 //Loop through case list to create email string
                 For(Case caseList : mpCases.values()){
@@ -229,8 +263,8 @@ public without sharing class sendClariEmail{
                             notificationTemplate = 'Notification Template';
                         }
                         else if(caseList.Account.Customer_Category__c == 'CHURCH' || caseList.Account.Customer_Category__c == 'BOOKSTORE'){
-                            clarificationTemplateTemplate = 'AW- Clarification - Customer Contact';
-                            proofTemplate  = 'AW- Proof - Customer Contact';  
+                            clarificationTemplateTemplate = 'AW - Clarification - Customer Contact';
+                            proofTemplate  = 'AW - Proof - Customer Contact';  
                             notificationTemplate = 'Notification Template';                 
                         } else if(caseList.Account.Corporate_Route__c == 'Elite 802 4Imprint' || 
                                     (caseList.Customer_To_Email__c != null && caseList.Customer_To_Email__c.contains('4Imprint'))){
@@ -249,8 +283,8 @@ public without sharing class sendClariEmail{
                             proofTemplate  = 'CCC - Proof - Cancellation Notice';
                             notificationTemplate = 'Notification Template';
                         } else if(caseList.Account.Customer_Category__c == 'CHURCH' || caseList.Account.Customer_Category__c == 'BOOKSTORE'){
-                            clarificationTemplateTemplate = 'AW- Clarification - Cancellation Notice';
-                            proofTemplate  = 'AW- Proof - Cancellation Notice';  
+                            clarificationTemplateTemplate = 'AW - Clarification - Cancellation Notice';
+                            proofTemplate  = 'AW - Proof - Cancellation Notice';  
                             notificationTemplate = 'Notification Template';
                         } else if(caseList.Account.Corporate_Route__c == 'Elite 802 4Imprint' || 
                                     (caseList.Customer_To_Email__c != null && caseList.Customer_To_Email__c.contains('4Imprint'))){
@@ -258,7 +292,7 @@ public without sharing class sendClariEmail{
                             proofTemplate  = '4Imprint - Proof - Cancellation Notice';   
                             notificationTemplate = '4Imprint Notification Template';
                         } else {
-                            clarificationTemplateTemplate = 'Clarification - Cancellation Notice';
+                            clarificationTemplateTemplate = 'CCC - Clarification - Cancellation Notice';
                             proofTemplate  = 'Proof - Cancellation Notice';     
                             notificationTemplate = 'Notification Template';        
                         }               
@@ -268,12 +302,12 @@ public without sharing class sendClariEmail{
                             proofTemplate  = 'CCC - Proof Template - Cancellation';
                             notificationTemplate = 'Notification Template';
                         } else if(caseList.Account.Customer_Category__c == 'CHURCH' || caseList.Account.Customer_Category__c == 'BOOKSTORE'){
-                            clarificationTemplateTemplate = 'AW- Clarification Template - Cancellation';
-                            proofTemplate  = 'AW- Proof Template - Cancellation';        
+                            clarificationTemplateTemplate = 'AW - Clarification Template - Cancellation';
+                            proofTemplate  = 'AW - Proof Template - Cancellation';        
                             notificationTemplate = 'Notification Template';
                         } else if(caseList.Account.Corporate_Route__c == 'Elite 802 4Imprint' || 
                                     (caseList.Customer_To_Email__c != null && caseList.Customer_To_Email__c.contains('4Imprint'))){
-                            clarificationTemplateTemplate  = '4Imprint - Clarification Template - Canellation';
+                            clarificationTemplateTemplate  = '4Imprint - Clarification Template - Cancellation';
                             proofTemplate  = '4Imprint - Proof Template - Cancel';   
                             notificationTemplate = '4Imprint Notification Template';
                         } else {
@@ -284,7 +318,7 @@ public without sharing class sendClariEmail{
                         
                         caseList.status = 'Closed';
                         updCase.add(caseList);               
-                    }            
+                    }         
                     
                     system.debug(mpOWEToEmail.get('customerservice@kooziegroup.com'));
                     
@@ -292,6 +326,7 @@ public without sharing class sendClariEmail{
                     if(emailType == 'Clarification' || emailType == 'Notification'){
                         IF(caseList.Clarification_Team_Link__c != null){
                             sentEmail = caseList.Clarification_Team_Link__r.From_Email__c;
+                            System.debug('===== '+sentEmail);
                         }
                         
                         IF(caseList.Clarification_CC_Email__c != NULL){
@@ -313,6 +348,7 @@ public without sharing class sendClariEmail{
                         
                         IF(caseList.Proof_To_Email__c != NULL){
                             lstClariEmail.add(caseList.Proof_To_Email__c);
+                            System.debug('==== '+lstClariEmail);
                         }               
                     }                            
                     
@@ -347,7 +383,7 @@ public without sharing class sendClariEmail{
                         message.setTargetObjectId(contID);
                         message.toAddresses = new String[] {contID};
                         message.setToAddresses(lstClariEmail);
-                        
+                        System.debug('=======  '+message);
                         if(caseList.Current_Process__c != 'Cancellation'){
                             Case caseToUpdate = caseList;
                             caseToUpdate.ContactID = contID;
@@ -364,8 +400,8 @@ public without sharing class sendClariEmail{
                         //Set FROM address to OrgWide Email address
                         OrgWideEmailAddress owea = lstOWEA[0]; 
                         message.setOrgWideEmailAddressId(owea.Id);   
+                        System.debug('=======  '+message);
                     } else {
-                    
                         if(caseList.Account.Customer_Category__c == 'NON-VERIFIED' || caseList.Account.LOGO__C == 'CALENDAR COOP'){          
                             message.setOrgWideEmailAddressId(defaultEmailID_CCC); 
                         } else if(caseList.Account.Customer_Category__c == 'CHURCH' || caseList.Account.Customer_Category__c == 'BOOKSTORE'){
@@ -380,18 +416,22 @@ public without sharing class sendClariEmail{
                     EmailTemplate emailTemplate;
                     
                     //Get template information
-                    if(emailType == 'Proof'){
-                        emailTemplate = [Select Id,Subject,Description,HtmlValue,DeveloperName,Body 
+                    //if(emailType == 'Proof'){
+                        if(lstCaseQues[0].RecordType.Name == 'ProofQuestion'){
+                        System.debug('======Proof Template======= ');
+                        emailTemplate = [Select Id,name,Subject,Description,HtmlValue,DeveloperName,Body,TemplateType,FolderId  
                             from EmailTemplate 
-                            where name =: proofTemplate];
-                    } else if(emailType == 'Clarification'){
-                        emailTemplate = [Select Id,Subject,Description,HtmlValue,DeveloperName,Body 
+                            where Name =: proofTemplate];
+                    }// else if(emailType == 'Clarification'){
+                        else if(lstCaseQues[0].RecordType.Name == 'ClarificationQuestion'){
+                        System.debug('======Clarification Template======= ');
+                        emailTemplate = [Select Id,name,Subject,Description,HtmlValue,DeveloperName,Body,TemplateType,FolderId 
                             from EmailTemplate 
-                            where name =:  clarificationTemplateTemplate];
+                            where Name =:  clarificationTemplateTemplate];
                     } else if(emailType == 'Notification'){
-                        emailTemplate = [Select Id,Subject,Description,HtmlValue,DeveloperName,Body 
+                        emailTemplate = [Select Id,name,Subject,Description,HtmlValue,DeveloperName,Body,TemplateType,FolderId 
                             from EmailTemplate 
-                            where name =:  notificationTemplate];
+                            where Name =:  notificationTemplate];
                     }
                     
                     //Continue setting up the email
@@ -400,21 +440,24 @@ public without sharing class sendClariEmail{
                     
                     //Add message to message array for mass sending
                     arrayMessage.add(message);
+                    System.debug('======= '+arrayMessage);
 
                 }
-            } catch(Exception e){               
-                    aeInsert.clear();
-                    Apex_Errors__c aeEmailHandler = new Apex_Errors__c();
-                    aeEmailHandler.Error_Date_Time__c = dateTime.now();
-                    aeEmailHandler.Error_Message__c = e.getMessage();
-                    aeInsert.add(aeEmailHandler);   
-                    insert aeInsert;                    
-            }
+          //  } catch(Exception e){               
+                 //   aeInsert.clear();
+                 //   Apex_Errors__c aeEmailHandler = new Apex_Errors__c();
+                 //   aeEmailHandler.Error_Date_Time__c = dateTime.now();
+                 //   aeEmailHandler.Error_Message__c = e.getMessage();
+                //    aeInsert.add(aeEmailHandler);   
+               //     insert aeInsert;                    
+         //   }
             
-            
+            system.debug('arrayMessage size @@@@@@'+arrayMessage.size());
+
             if(arrayMessage.size() > 0){
-            
+            System.debug('=======  '+arrayMessage);
                 Try{
+                    system.debug('before sending email@@@@@@');
                     List<Messaging.SendEmailResult> emResults = Messaging.sendEmail(arrayMessage);
 
                     if(cqUpdate.size() >0){
@@ -439,7 +482,8 @@ public without sharing class sendClariEmail{
                     Apex_Errors__c aeEmail = new Apex_Errors__c();
                     aeEmail.Error_Date_Time__c = dateTime.now();
                     aeEmail.Error_Message__c = e.getMessage();
-                    aeInsert.add(aeEmail);   
+                    aeInsert.add(aeEmail); 
+                    System.debug('======= '+aeInsert);  
                     insert aeInsert;                 
                 }           
             }
@@ -526,7 +570,8 @@ public without sharing class sendClariEmail{
             [Select Id,Subject,Description,HtmlValue,DeveloperName,Body 
                 from EmailTemplate 
                 where name =: strVoidTemplate];
-                
+                System.debug('========= '+emailTemplate);
+                System.debug('========= '+strVoidTemplate);
         //Continue setting up the email
         message.setTemplateID(emailTemplate.Id); 
         message.setWhatId(clarQues.Case__c);         
@@ -535,6 +580,7 @@ public without sharing class sendClariEmail{
         arrayMessage.add(message);  
 
         if(arrayMessage.size() > 0){
+            if(!test.isRunningTest())
             List<Messaging.SendEmailResult> emResults = Messaging.sendEmail(arrayMessage);                 
         }
     }    
@@ -561,8 +607,8 @@ public without sharing class sendClariEmail{
         }
         
         if(server.contains('--')){                
-            defOWE.add(mpOWEToEmail.get('servicecloudexceptions@outlook.com')); 
-            sentEmail = 'servicecloudexceptions@outlook.com';         
+            defOWE.add(mpOWEToEmail.get('servicecloudexception@outlook.com')); 
+            sentEmail = 'servicecloudexception@outlook.com';         
       
         } else {
             defOWE.add(mpOWEToEmail.get('customerservice@kooziegroup.com')); 
@@ -570,8 +616,8 @@ public without sharing class sendClariEmail{
         }         
         
         if(server.contains('--')){            
-            defOWE.add(mpOWEToEmail.get('servicecloudexceptions@outlook.com')); 
-            sentEmail = 'servicecloudexceptions@outlook.com';         
+            defOWE.add(mpOWEToEmail.get('servicecloudexception@outlook.com')); 
+            sentEmail = 'servicecloudexception@outlook.com';         
       
         } else {
             defOWE.add(mpOWEToEmail.get('customerservice@kooziegroup.com')); 

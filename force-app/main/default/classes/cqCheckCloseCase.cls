@@ -5,14 +5,16 @@ public with sharing class cqCheckCloseCase {
         Map<Case, List<Clarification_Question__c>> newCaseDetails = new Map<Case, List<Clarification_Question__c>>();
 
         For(Case lstCase : mpCaseDetails.KeySet()){
-            
+            System.debug('==Entered in For Loop===');
             Boolean closeCase = true;
             List<Clarification_Question__c> openCQ = new List<Clarification_Question__c>();
 
             For(Clarification_Question__c lstCQDetails : mpCaseDetails.get(lstCase)){
                 if(lstCQDetails.Status__c == '' || lstCQDetails.Status__c == 'Open' || lstCQDetails.Status__c == null){
+                    System.debug('==Entered in IF===');
                     closeCase = false;
                     openCQ.add(lstCQDetails);
+                    System.debug('==Value=== ' +openCQ);
                 }
             }
 
